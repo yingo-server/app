@@ -28,12 +28,37 @@ jobs:
       - name: Fix line endings and remove BOM from all source files
         run: |
           sudo apt-get update && sudo apt-get install -y dos2unix
-          # 处理无扩展名文件及 gradle.properties
           sed -i '1s/^\xEF\xBB\xBF//' gradlew gradlew.bat gradle.properties 2>/dev/null || true
           dos2unix gradlew gradlew.bat gradle.properties 2>/dev/null || true
-          # 处理所有 Gradle、Java、XML、Properties 文件
           find . -type f \( -name "*.gradle" -o -name "*.java" -o -name "*.xml" -o -name "*.properties" \) -exec sed -i '1s/^\xEF\xBB\xBF//' {} \;
           find . -type f \( -name "*.gradle" -o -name "*.java" -o -name "*.xml" -o -name "*.properties" \) -exec dos2unix {} \;
+
+      # 从根目录高清图标自动生成所有密度的启动器图标
+      - name: Generate multi-density launcher icons
+        run: |
+          # 查找原始图标（支持常见文件名）
+          ORIGINAL=""
+          for NAME in ic_launcher.png logo.png icon.png app_icon.png; do
+            if [ -f "$NAME" ]; then
+              ORIGINAL="$NAME"
+              break
+            fi
+          done
+          if [ -z "$ORIGINAL" ]; then
+            echo "Warning: No source icon found in repository root. Using default Android icon."
+            exit 0
+          fi
+          echo "Found source icon: $ORIGINAL"
+          sudo apt-get install -y imagemagick
+          for DENSITY in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
+            NAME=${DENSITY%:*}
+            SIZE=${DENSITY#*:}
+            DIR="app/src/main/res/mipmap-${NAME}"
+            mkdir -p "$DIR"
+            convert "$ORIGINAL" -resize ${SIZE}x${SIZE} "$DIR/ic_launcher.png"
+            echo "Created ${SIZE}x${SIZE} icon in $DIR"
+          done
+          echo "Multi-density icons generated successfully."
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
