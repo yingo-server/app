@@ -1,33 +1,31 @@
 package com.example.chat;
 
-import android.app.AlertDialog;
+import android.app.DownloadManager;
+import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
-import android.view.View;
+import android.os.Environment;
+import android.webkit.DownloadListener;
+import android.webkit.URLUtil;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.TextView;
+import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
 
-    // 你的线上页面地址
+    // 你的线上页面地址（WebView 打开的首页）
     private static final String TARGET_URL = "https://k.344977.xyz/AI";
-    // 用于验证网络连通的地址（百度首页，稳定且轻量）
-    private static final String PING_URL = "http://k.344977.xyz/test.html";
-    // HTTP 连接超时时间（毫秒），建议 3~5 秒
-    private static final int PING_TIMEOUT = 10000;
+
+    // 黑名单：这些域名及其子域名将在 WebView 内部打开，不跳转浏览器
+    // 通常填写你自己的 AI 网站域名即可
+    private static final String[] INTERNAL_DOMAINS = new String[]{
+            "k.344977.xyz"   // 替换为你的实际域名，例如 "myapp.netlify.app"
+    };
 
     private WebView webView;
-    private TextView loadingText;
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
-    private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,77 +33,68 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         webView = findViewById(R.id.webview);
-        loadingText = findViewById(R.id.loading_text);
-
-        // 初始隐藏 WebView，显示加载提示
-        webView.setVisibility(View.GONE);
-        loadingText.setVisibility(View.VISIBLE);
-        loadingText.setText("正在检查网络连接…");
-
-        // 配置 WebView（先不加载任何内容）
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
+        settings.setAllowFileAccess(true);
+        settings.setAllowFileAccessFromFileURLs(true);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                view.loadUrl(url);
+                Uri uri = Uri.parse(url);
+                String host = uri.getHost();
+                // 检查是否为黑名单域名（或其子域名），若是则在 WebView 内加载
+                if (host != null && isInternalDomain(host)) {
+                    view.loadUrl(url);
+                    return true;
+                }
+                // 其他链接一律跳转外部浏览器
+                Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+                startActivity(intent);
                 return true;
+            }
+
+            @Override
+            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+                // 加载本地错误页，不暴露域名
+                view.loadUrl("file:///android_asset/error.html");
             }
         });
 
-        // 在后台线程执行网络检测
-        executor.execute(this::checkNetwork);
+        // 下载支持
+        webView.setDownloadListener(new DownloadListener() {
+            @Override
+            public void onDownloadStart(String url, String userAgent,
+                                        String contentDisposition, String mimetype,
+                                        long contentLength) {
+                DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+                request.setMimeType(mimetype);
+                request.setTitle("下载文件");
+                request.setDescription("正在下载...");
+                request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                String fileName = URLUtil.guessFileName(url, contentDisposition, mimetype);
+                request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+                DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+                dm.enqueue(request);
+                Toast.makeText(MainActivity.this, "开始下载", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        // 直接加载目标网页，无网络检测
+        webView.loadUrl(TARGET_URL);
     }
 
     /**
-     * 验证网络是否真实可用：尝试连接百度首页，仅验证连通性。
+     * 判断主机名是否属于内部域名（黑名单）
      */
-    private void checkNetwork() {
-        boolean reachable = false;
-        try {
-            URL url = new URL(PING_URL);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setConnectTimeout(PING_TIMEOUT);
-            connection.setReadTimeout(PING_TIMEOUT);
-            connection.setRequestMethod("GET");
-            connection.setInstanceFollowRedirects(false);
-            int responseCode = connection.getResponseCode();
-            // 只要能收到任何响应（2xx或3xx），都认为网络可达
-            if (responseCode >= 200 && responseCode < 400) {
-                reachable = true;
+    private boolean isInternalDomain(String host) {
+        for (String domain : INTERNAL_DOMAINS) {
+            if (host.equals(domain) || host.endsWith("." + domain)) {
+                return true;
             }
-            connection.disconnect();
-        } catch (Exception e) {
-            // 异常表示网络不可达或超时
-            reachable = false;
         }
-
-        final boolean finalReachable = reachable;
-        mainHandler.post(() -> {
-            if (finalReachable) {
-                // 网络正常，加载目标页面
-                loadingText.setVisibility(View.GONE);
-                webView.setVisibility(View.VISIBLE);
-                webView.loadUrl(TARGET_URL);
-            } else {
-                // 网络不可达，弹出对话框并退出
-                new AlertDialog.Builder(MainActivity.this)
-                        .setTitle("网络不可用")
-                        .setMessage("无法连接到互联网，请检查网络后重试。")
-                        .setCancelable(false)
-                        .setPositiveButton("退出", (dialog, which) -> {
-                            finish();
-                            System.exit(0);
-                        })
-                        .show();
-            }
-        });
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        executor.shutdownNow();
+        return false;
     }
 }
