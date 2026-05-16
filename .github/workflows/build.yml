@@ -28,9 +28,9 @@ jobs:
       - name: Fix line endings and remove BOM from all source files
         run: |
           sudo apt-get update && sudo apt-get install -y dos2unix
-          # 专门处理 gradlew 和 gradlew.bat（无扩展名）
-          sed -i '1s/^\xEF\xBB\xBF//' gradlew gradlew.bat 2>/dev/null || true
-          dos2unix gradlew gradlew.bat 2>/dev/null || true
+          # 处理无扩展名文件及 gradle.properties
+          sed -i '1s/^\xEF\xBB\xBF//' gradlew gradlew.bat gradle.properties 2>/dev/null || true
+          dos2unix gradlew gradlew.bat gradle.properties 2>/dev/null || true
           # 处理所有 Gradle、Java、XML、Properties 文件
           find . -type f \( -name "*.gradle" -o -name "*.java" -o -name "*.xml" -o -name "*.properties" \) -exec sed -i '1s/^\xEF\xBB\xBF//' {} \;
           find . -type f \( -name "*.gradle" -o -name "*.java" -o -name "*.xml" -o -name "*.properties" \) -exec dos2unix {} \;
