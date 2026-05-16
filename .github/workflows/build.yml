@@ -25,10 +25,13 @@ jobs:
           mkdir -p gradle/wrapper
           curl -L https://github.com/gradle/gradle/raw/v7.6.0/gradle/wrapper/gradle-wrapper.jar -o gradle/wrapper/gradle-wrapper.jar
 
-      - name: Fix line endings and remove BOM from all gradle & source files
+      - name: Fix line endings and remove BOM from all source files
         run: |
           sudo apt-get update && sudo apt-get install -y dos2unix
-          # 将所有 .gradle, .java, .xml, .properties 文件转为 Unix 行尾，并去除 BOM
+          # 专门处理 gradlew 和 gradlew.bat（无扩展名）
+          sed -i '1s/^\xEF\xBB\xBF//' gradlew gradlew.bat 2>/dev/null || true
+          dos2unix gradlew gradlew.bat 2>/dev/null || true
+          # 处理所有 Gradle、Java、XML、Properties 文件
           find . -type f \( -name "*.gradle" -o -name "*.java" -o -name "*.xml" -o -name "*.properties" \) -exec sed -i '1s/^\xEF\xBB\xBF//' {} \;
           find . -type f \( -name "*.gradle" -o -name "*.java" -o -name "*.xml" -o -name "*.properties" \) -exec dos2unix {} \;
 
