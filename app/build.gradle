@@ -1,0 +1,33 @@
+﻿plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.example.chat'
+    compileSdk 33
+
+    defaultConfig {
+        applicationId "com.example.chat"
+        minSdk 21        // Android 5.0，对应 WebView 50+
+        targetSdk 33
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt')
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.webkit:webkit:1.7.0'
+}
