@@ -18,9 +18,9 @@ import java.util.concurrent.Executors;
 public class MainActivity extends AppCompatActivity {
 
     // 你的线上页面地址
-    private static final String TARGET_URL = "https://k.344977.xyz";
+    private static final String TARGET_URL = "https://k.344977.xyz/AI";
     // 用于验证网络连通的地址（百度首页，稳定且轻量）
-    private static final String PING_URL = "http://example.com";
+    private static final String PING_URL = "http://k.344977.xyz/test.html";
     // HTTP 连接超时时间（毫秒），建议 3~5 秒
     private static final int PING_TIMEOUT = 10000;
 
