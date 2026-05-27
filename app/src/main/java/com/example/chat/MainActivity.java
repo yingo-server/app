@@ -17,7 +17,7 @@ import androidx.appcompat.app.AppCompatActivity;
 public class MainActivity extends AppCompatActivity {
 
     // 你的线上页面地址（WebView 打开的首页）
-    private static final String TARGET_URL = "https://k.344977.xyz/AI";
+    private static final String TARGET_URL = "https://k.344977.xyz/moonjump";
 
     // 黑名单：这些域名及其子域名将在 WebView 内部打开，不跳转浏览器
     // 通常填写你自己的 AI 网站域名即可
